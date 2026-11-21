@@ -55,10 +55,17 @@ if you execute the original MO-GNN reference model outside ns-3.
 
 ## Quick start
 
+> **Back up the original ns-3.40 tree before applying this overlay.**
+> `apply_to_ns3.sh` patches `src/` in place and copies files into `contrib/`,
+> `scratch/` and the tree root; it does not provide an automatic rollback.
+> Work on a fresh copy, keep an untouched archive, or run `git init` in the
+> ns-3.40 tree before applying so you can revert with `git checkout -- .`.
+
 ```bash
-# 1. Unpack the official ns-allinone-3.40 release.
+# 1. Unpack the official release and keep the original tree untouched.
 tar -xjf ns-allinone-3.40.tar.bz2
-cd ns-allinone-3.40/ns-3.40
+cp -a ns-allinone-3.40/ns-3.40 ns-3.40-cafbcr
+cd ns-3.40-cafbcr
 
 # 2. Apply the four src/ patches and copy the overlay.
 /path/to/cafbcr-open-source/apply_to_ns3.sh "$PWD"

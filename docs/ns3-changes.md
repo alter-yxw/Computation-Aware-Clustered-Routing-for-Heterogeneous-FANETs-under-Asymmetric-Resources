@@ -84,3 +84,7 @@ done
 
 The 16 files above are the complete delta. No other `src/` file differs from
 the official release.
+
+Keep a pristine ns-3.40 copy before applying the patches. They modify `src/`
+in place and there is no automatic rollback; alternatively run `git init` in
+the ns-3.40 tree so `git checkout -- .` can restore it.

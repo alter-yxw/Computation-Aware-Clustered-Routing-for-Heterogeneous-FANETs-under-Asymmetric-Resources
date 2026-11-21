@@ -9,6 +9,10 @@
 # the four src/ patches, then copies the contrib modules, the scratch entry
 # points and the experiment scripts into the tree. It never overwrites an
 # existing contrib module and never touches build artefacts.
+#
+# WARNING: the target is modified in place and there is no automatic rollback.
+# Back up the original ns-3.40 tree first, or run "git init" inside it before
+# applying so that "git checkout -- ." can restore it.
 
 set -euo pipefail
 
@@ -65,4 +69,6 @@ Done. Build with:
   ./ns3 build ca-fbcr-test -j2
 
 See README.md for run commands and scenario details.
+
+Note: $TARGET was modified in place. Keep the original ns-3.40 copy for rollback.
 EOF
