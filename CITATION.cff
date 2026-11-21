@@ -1,0 +1,9 @@
+cff-version: 1.2.0
+message: "If you use this code, please cite the CA-FBCR paper."
+title: "CA-FBCR: computation-aware clustering and routing for FANETs"
+authors:
+  - name: "The CA-FBCR Authors"
+version: 1.0.0
+date-released: "2026-11-21"
+license: "GPL-2.0-only"
+repository-code: "https://github.com/alter-yxw/Computation-Aware-Clustered-Routing-for-Heterogeneous-FANETs-under-Asymmetric-Resources"

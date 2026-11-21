@@ -1,0 +1,18 @@
+# Build artifacts
+build/
+cmake-cache/
+*.o
+*.so
+*.a
+
+# Simulation outputs
+Result/
+*.csv
+*.audit.log
+*.status.tsv
+*.failures/
+
+# Editor/OS noise
+.vscode/
+.idea/
+.DS_Store

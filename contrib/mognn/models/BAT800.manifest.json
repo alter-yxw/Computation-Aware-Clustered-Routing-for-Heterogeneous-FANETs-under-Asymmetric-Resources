@@ -1,0 +1,47 @@
+{
+  "upstream": "https://github.com/zhongyuanzhao/multihop-offload",
+  "commit": "524bc4ef6af2a2a8c238b91470d10d2aeda14915",
+  "reader": "tensorflow-2.15.1",
+  "checkpoint": "cp-0000.ckpt",
+  "chebyshev_order": 1,
+  "leaky_relu_alpha": 0.20000000298023224,
+  "features": [
+    "virtual",
+    "rate",
+    "arrival",
+    "server"
+  ],
+  "kernel_shapes": {
+    "layer_with_weights-0": [
+      1,
+      4,
+      32
+    ],
+    "layer_with_weights-1": [
+      1,
+      32,
+      32
+    ],
+    "layer_with_weights-2": [
+      1,
+      32,
+      32
+    ],
+    "layer_with_weights-3": [
+      1,
+      32,
+      32
+    ],
+    "layer_with_weights-4": [
+      1,
+      32,
+      1
+    ]
+  },
+  "sha256": {
+    "cp-0000.ckpt.index": "97e5b9767c44c10ac1295eef488d19296bd8d53ba67a3fd8676c517373046108",
+    "cp-0000.ckpt.data-00000-of-00001": "5f17759de8bd7c342383b0da157cde055dfbfe7f5e5d67a6e2a02fe9bba42df4",
+    "BAT800.txt": "ae2c812c6635ae6397c2e3bb10ecab54b469b707db206a29a9273957f142e595"
+  },
+  "paper_numerical_reproduction": false
+}

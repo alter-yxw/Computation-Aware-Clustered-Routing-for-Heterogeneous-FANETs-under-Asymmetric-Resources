@@ -1,0 +1,122 @@
+diff -ruN a/src/internet/model/arp-cache.cc b/src/internet/model/arp-cache.cc
+--- a/src/internet/model/arp-cache.cc	2026-11-21 16:13:25.220692579 +0800
++++ b/src/internet/model/arp-cache.cc	2026-11-21 16:13:25.221692678 +0800
+@@ -553,6 +553,17 @@
+     return delta > timeout;
+ }
+ 
++bool
++ArpCache::Entry::IsReprobeDue(Time interval) const
++{
++    NS_LOG_FUNCTION(this << interval);
++    if (interval <= Time(0))
++    {
++        return false;
++    }
++    return (Simulator::Now() - m_lastSeen) >= interval;
++}
++
+ ArpCache::Ipv4PayloadHeaderPair
+ ArpCache::Entry::DequeuePending()
+ {
+diff -ruN a/src/internet/model/arp-cache.h b/src/internet/model/arp-cache.h
+--- a/src/internet/model/arp-cache.h	2026-11-21 16:13:25.224692976 +0800
++++ b/src/internet/model/arp-cache.h	2026-11-21 16:13:25.225693075 +0800
+@@ -262,6 +262,18 @@
+          */
+         bool IsExpired() const;
+         /**
++         * \brief Returns true if a DEAD entry has remained dead for at least
++         *        the supplied interval.
++         *
++         * The interval is measured from the most recent state refresh, which
++         * for a DEAD entry is the moment it was last marked dead.
++         *
++         * \param interval minimum time since the entry was marked dead
++         * \return True if interval is positive and the entry has been dead for
++         *         at least interval; false otherwise.
++         */
++        bool IsReprobeDue(Time interval) const;
++        /**
+          * \returns 0 is no packet is pending, the next packet to send if
+          *            packets are pending.
+          */
+diff -ruN a/src/internet/model/arp-l3-protocol.cc b/src/internet/model/arp-l3-protocol.cc
+--- a/src/internet/model/arp-l3-protocol.cc	2026-11-21 16:13:25.228693372 +0800
++++ b/src/internet/model/arp-l3-protocol.cc	2026-11-21 16:13:25.229693472 +0800
+@@ -65,6 +65,15 @@
+                           StringValue("ns3::UniformRandomVariable[Min=0.0|Max=10.0]"),
+                           MakePointerAccessor(&ArpL3Protocol::m_requestJitter),
+                           MakePointerChecker<RandomVariableStream>())
++            .AddAttribute("DeadReprobeInterval",
++                          "Minimum time since an entry was marked DEAD before a new "
++                          "packet may trigger a fresh resolution attempt, while the "
++                          "entry's normal dead timeout has not yet expired. "
++                          "The default of zero disables this behaviour and preserves "
++                          "the stock ns-3 drop-on-dead-entry semantics.",
++                          TimeValue(Seconds(0)),
++                          MakeTimeAccessor(&ArpL3Protocol::m_deadReprobeInterval),
++                          MakeTimeChecker())
+             .AddTraceSource("Drop",
+                             "Packet dropped because not enough room "
+                             "in pending queue for a specific cache entry.",
+@@ -74,7 +83,8 @@
+ }
+ 
+ ArpL3Protocol::ArpL3Protocol()
+-    : m_tc(nullptr)
++    : m_deadReprobeInterval(Seconds(0)),
++      m_tc(nullptr)
+ {
+     NS_LOG_FUNCTION(this);
+ }
+@@ -330,11 +340,25 @@
+         {
+             if (entry->IsDead())
+             {
+-                NS_LOG_LOGIC("node=" << m_node->GetId() << ", dead entry for " << destination
+-                                     << " valid -- drop");
+-                // add the Ipv4 header for tracing purposes
+-                packet->AddHeader(ipHeader);
+-                m_dropTrace(packet);
++                if (entry->IsReprobeDue(m_deadReprobeInterval))
++                {
++                    NS_LOG_LOGIC("node=" << m_node->GetId() << ", dead entry for " << destination
++                                         << " valid -- rate-limited reprobe");
++                    entry->MarkWaitReply(ArpCache::Ipv4PayloadHeaderPair(packet, ipHeader));
++                    Simulator::Schedule(Time(MilliSeconds(m_requestJitter->GetValue())),
++                                        &ArpL3Protocol::SendArpRequest,
++                                        this,
++                                        cache,
++                                        destination);
++                }
++                else
++                {
++                    NS_LOG_LOGIC("node=" << m_node->GetId() << ", dead entry for " << destination
++                                         << " valid -- drop");
++                    // add the Ipv4 header for tracing purposes
++                    packet->AddHeader(ipHeader);
++                    m_dropTrace(packet);
++                }
+             }
+             else if (entry->IsAlive())
+             {
+diff -ruN a/src/internet/model/arp-l3-protocol.h b/src/internet/model/arp-l3-protocol.h
+--- a/src/internet/model/arp-l3-protocol.h	2026-11-21 16:13:25.232693769 +0800
++++ b/src/internet/model/arp-l3-protocol.h	2026-11-21 16:13:25.233693868 +0800
+@@ -23,6 +23,7 @@
+ 
+ #include "ns3/address.h"
+ #include "ns3/net-device.h"
++#include "ns3/nstime.h"
+ #include "ns3/ptr.h"
+ #include "ns3/random-variable-stream.h"
+ #include "ns3/traced-callback.h"
+@@ -169,6 +170,7 @@
+     Ptr<Node> m_node;                              //!< node the ARP L3 protocol is associated with
+     TracedCallback<Ptr<const Packet>> m_dropTrace; //!< trace for packets dropped by ARP
+     Ptr<RandomVariableStream> m_requestJitter;     //!< jitter to de-sync ARP requests
++    Time m_deadReprobeInterval; //!< minimum time since death before a DEAD entry may re-probe
+     Ptr<TrafficControlLayer> m_tc;                 //!< The associated TrafficControlLayer
+ };
+ 

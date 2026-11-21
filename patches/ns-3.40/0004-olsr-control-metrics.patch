@@ -1,0 +1,329 @@
+diff -ruN a/src/olsr/model/olsr-repositories.h b/src/olsr/model/olsr-repositories.h
+--- a/src/olsr/model/olsr-repositories.h	2026-11-21 16:13:25.287699224 +0800
++++ b/src/olsr/model/olsr-repositories.h	2026-11-21 16:13:25.288699323 +0800
+@@ -336,6 +336,19 @@
+ typedef std::vector<AssociationTuple> AssociationSet;       //!< Association Set type.
+ typedef std::vector<Association> Associations;              //!< Association Set type.
+ 
++
++struct LinkMetricInfo {
++    Time creationTime;           // Link creation time
++    Time lastSeenTime;           // Last time the link was seen
++    Time symLinkStartTime;       // Symmetric-link start time
++    Time symLinkEndTime;         // Symmetric-link end time
++    bool isSymmetric;            // Whether the link is currently symmetric
++    bool isAlive;                // Whether the link is alive
++};
++
++
++
++
+ } // namespace olsr
+ } // namespace ns3
+ 
+diff -ruN a/src/olsr/model/olsr-routing-protocol.cc b/src/olsr/model/olsr-routing-protocol.cc
+--- a/src/olsr/model/olsr-routing-protocol.cc	2026-11-21 16:13:25.291699621 +0800
++++ b/src/olsr/model/olsr-routing-protocol.cc	2026-11-21 16:13:25.292699720 +0800
+@@ -32,6 +32,7 @@
+         std::clog << "[node " << GetObject<Node>()->GetId() << "] ";                               \
+     }
+ 
++#include <fstream>
+ #include "olsr-routing-protocol.h"
+ 
+ #include "olsr-repositories.h"
+@@ -259,7 +260,10 @@
+       m_tcTimer(Timer::CANCEL_ON_DESTROY),
+       m_midTimer(Timer::CANCEL_ON_DESTROY),
+       m_hnaTimer(Timer::CANCEL_ON_DESTROY),
+-      m_queuedMessagesTimer(Timer::CANCEL_ON_DESTROY)
++      m_queuedMessagesTimer(Timer::CANCEL_ON_DESTROY),
++      m_HelloCounter(0),
++      m_controlPacketCounter(0),
++      m_ControllPacketSize(0)
+ {
+     m_uniformRandomVariable = CreateObject<UniformRandomVariable>();
+ 
+@@ -490,9 +494,30 @@
+         NS_ABORT_MSG("No incoming interface on OLSR message, aborting.");
+     }
+     uint32_t incomingIf = interfaceInfo.GetRecvIf();
+-    Ptr<Node> node = this->GetObject<Node>();
+-    Ptr<NetDevice> dev = node->GetDevice(incomingIf);
+-    uint32_t recvInterfaceIndex = m_ipv4->GetInterfaceForDevice(dev);
++
++    // GetRecvIf() returns the NetDevice's IfIndex, not the node's device array index
++    // We need to find the Ipv4 interface whose device has this IfIndex
++    uint32_t recvInterfaceIndex = 0;
++    Ptr<NetDevice> dev = nullptr;
++    bool found = false;
++
++    for (uint32_t i = 0; i < m_ipv4->GetNInterfaces(); i++)
++    {
++        Ptr<NetDevice> iface_dev = m_ipv4->GetNetDevice(i);
++        if (iface_dev && iface_dev->GetIfIndex() == incomingIf)
++        {
++            recvInterfaceIndex = i;
++            dev = iface_dev;
++            found = true;
++            break;
++        }
++    }
++
++    if (!found)
++    {
++        NS_LOG_WARN("Received packet on unknown interface with IfIndex " << incomingIf << ". Ignoring.");
++        return;
++    }
+ 
+     if (m_interfaceExclusions.find(recvInterfaceIndex) != m_interfaceExclusions.end())
+     {
+@@ -1655,7 +1680,9 @@
+ void
+ RoutingProtocol::QueueMessage(const olsr::MessageHeader& message, Time delay)
+ {
++    m_controlPacketCounter++;
+     m_queuedMessages.push_back(message);
++    m_ControllPacketSize += message.GetSerializedSize();
+     if (not m_queuedMessagesTimer.IsRunning())
+     {
+         m_queuedMessagesTimer.SetDelay(delay);
+@@ -1827,6 +1854,8 @@
+     }
+     NS_LOG_DEBUG("OLSR HELLO message size: " << int(msg.GetSerializedSize()) << " (with "
+                                              << int(linkMessages.size()) << " link messages)");
++    m_HelloCounter++;
++
+     QueueMessage(msg, JITTER);
+ }
+ 
+@@ -2042,6 +2071,22 @@
+         newLinkTuple.symTime = now - Seconds(1);
+         newLinkTuple.time = now + msg.GetVTime();
+         link_tuple = &m_state.InsertLinkTuple(newLinkTuple);
++
++        // Initialize link metrics
++        std::pair<Ipv4Address, Ipv4Address> linkPair =
++            std::make_pair(receiverIface, senderIface);
++        if (m_linkMetrics.find(linkPair) == m_linkMetrics.end())
++        {
++            LinkMetricInfo info;
++            info.creationTime = now;
++            info.lastSeenTime = now;
++            info.symLinkStartTime = Time(0);
++            info.symLinkEndTime = Time(0);
++            info.isSymmetric = false;
++            info.isAlive = true;
++            m_linkMetrics[linkPair] = info;
++        }
++
+         created = true;
+         NS_LOG_LOGIC("Existing link tuple did not exist => creating new one");
+     }
+@@ -2393,6 +2438,28 @@
+     NS_LOG_DEBUG(Simulator::Now().As(Time::S)
+                  << ": OLSR Node " << m_mainAddress << " LinkTuple " << tuple << " REMOVED.");
+ 
++    std::pair<Ipv4Address, Ipv4Address> linkPair =  std::make_pair(tuple.localIfaceAddr, tuple.neighborIfaceAddr);
++    if (m_linkMetrics.find(linkPair) != m_linkMetrics.end())
++    {
++        LinkMetricInfo& info = m_linkMetrics[linkPair];
++        if (info.isAlive)
++        {
++            info.isAlive = false;
++            Time now = Simulator::Now();
++            double lifetime = (now - info.creationTime).GetSeconds();
++            m_linkLifetimes.push_back(lifetime);
++            if (info.isSymmetric && info.symLinkStartTime > Time(0))
++            {
++                info.symLinkEndTime = now;
++                double symDuration = (info.symLinkEndTime - info.symLinkStartTime).GetSeconds();
++                m_symLinkDurations.push_back(symDuration);
++            }
++        }
++    }
++
++
++
++
+     m_state.EraseNeighborTuple(GetMainAddress(tuple.neighborIfaceAddr));
+     m_state.EraseLinkTuple(tuple);
+ }
+@@ -2610,6 +2677,7 @@
+ RoutingProtocol::HelloTimerExpire()
+ {
+     SendHello();
++    CollectLinkLifetimeMetrics();
+     m_helloTimer.Schedule(m_helloInterval);
+ }
+ 
+@@ -3201,6 +3269,129 @@
+     return false;
+ }
+ 
++
++void
++RoutingProtocol::CollectLinkLifetimeMetrics()
++{
++    Time now = Simulator::Now();
++    const LinkSet& links = m_state.GetLinks();
++    
++    for (const auto& link : links)
++    {
++        std::pair<Ipv4Address, Ipv4Address> linkPair =
++            std::make_pair(link.localIfaceAddr, link.neighborIfaceAddr);
++
++        if (m_linkMetrics.find(linkPair) == m_linkMetrics.end())
++        {
++            LinkMetricInfo info;
++            info.creationTime = now;
++            info.lastSeenTime = now;
++            info.symLinkStartTime = Time(0);
++            info.symLinkEndTime = Time(0);
++            info.isSymmetric = (link.symTime > now);
++            info.isAlive = true;
++            if (info.isSymmetric) info.symLinkStartTime = now;
++            m_linkMetrics[linkPair] = info;
++        }
++        else
++        {
++            LinkMetricInfo& info = m_linkMetrics[linkPair];
++            info.lastSeenTime = now;
++            bool currentlySymmetric = (link.symTime > now);
++            if (currentlySymmetric && !info.isSymmetric)
++            {
++                info.isSymmetric = true;
++                info.symLinkStartTime = now;
++            }
++            else if (!currentlySymmetric && info.isSymmetric)
++            {
++                info.isSymmetric = false;
++                info.symLinkEndTime = now;
++                if (info.symLinkStartTime > Time(0))
++                {
++                    double symDuration = (info.symLinkEndTime - info.symLinkStartTime).GetSeconds();
++                    m_symLinkDurations.push_back(symDuration);
++                }
++            }
++        }
++    }
++
++    for (auto& metric : m_linkMetrics)
++    {
++        Time timeout = Seconds(3.0 * m_helloInterval.GetSeconds());
++        if (metric.second.isAlive && (now - metric.second.lastSeenTime) > timeout)
++        {
++            metric.second.isAlive = false;
++            double lifetime = (metric.second.lastSeenTime - metric.second.creationTime).GetSeconds();
++            m_linkLifetimes.push_back(lifetime);
++            if (metric.second.isSymmetric && metric.second.symLinkStartTime > Time(0))
++            {
++                metric.second.symLinkEndTime = metric.second.lastSeenTime;
++                double symDuration = (metric.second.symLinkEndTime - metric.second.symLinkStartTime).GetSeconds();
++                m_symLinkDurations.push_back(symDuration);
++            }
++        }
++    }
++}
++
++double
++RoutingProtocol::GetAverageLinkLifetime() const
++{
++    if (m_linkLifetimes.empty()) return 0.0;
++    double sum = 0.0;
++    for (double lifetime : m_linkLifetimes) sum += lifetime;
++    return sum / m_linkLifetimes.size();
++}
++
++
++double
++RoutingProtocol::GetControlThroughput() const
++{
++    double thp = 0.0;
++    thp = m_ControllPacketSize / 1000;
++    return thp;
++}
++
++
++
++double
++RoutingProtocol::GetAverageLinkSymmetricDuration() const
++{
++    if (m_symLinkDurations.empty()) return 0.0;
++    double sum = 0.0;
++    for (double duration : m_symLinkDurations) sum += duration;
++    return sum / m_symLinkDurations.size();
++}
++
++uint32_t
++RoutingProtocol::GetTotalDeadLinks() const
++{
++    return m_linkLifetimes.size();
++}
++
++uint32_t
++RoutingProtocol::GetTotalSymLinkDurations() const
++{
++    return m_symLinkDurations.size();
++}
++
++void
++RoutingProtocol::PrintLinkLifetimeStats(const std::string& filename) const
++{
++    std::ofstream ofs(filename, std::ios::app);
++    if (!ofs.is_open()) return;
++    ofs << "Node " << m_mainAddress << ": dead_links=" << m_linkLifetimes.size()
++        << " avg_lifetime=" << GetAverageLinkLifetime() << "s"
++        << " sym_durations=" << m_symLinkDurations.size()
++        << " avg_sym=" << GetAverageLinkSymmetricDuration() << "s\n";
++    ofs.close();
++}
++
++
++
++
++
++
+ void
+ RoutingProtocol::Dump()
+ {
+diff -ruN a/src/olsr/model/olsr-routing-protocol.h b/src/olsr/model/olsr-routing-protocol.h
+--- a/src/olsr/model/olsr-routing-protocol.h	2026-11-21 16:13:25.296700117 +0800
++++ b/src/olsr/model/olsr-routing-protocol.h	2026-11-21 16:13:25.296700117 +0800
+@@ -407,6 +407,16 @@
+      * \return the corresponding main address.
+      */
+     Ipv4Address GetMainAddress(Ipv4Address iface_addr) const;
++    
++    void        CollectLinkLifetimeMetrics();
++    uint64_t    GetTotalControlPackets() const {return m_controlPacketCounter;}
++    uint64_t    GetHelloCount() const { return m_HelloCounter;}
++    double      GetControlThroughput() const;
++    double      GetAverageLinkLifetime() const;
++    double      GetAverageLinkSymmetricDuration() const;
++    uint32_t    GetTotalDeadLinks() const;
++    uint32_t    GetTotalSymLinkDurations() const;
++    void        PrintLinkLifetimeStats(const std::string& filename) const;
+ 
+   private:
+     /**
+@@ -837,6 +847,19 @@
+ 
+     /// Provides uniform random variables.
+     Ptr<UniformRandomVariable> m_uniformRandomVariable;
++
++    /// ControlPacket Counter
++    uint64_t m_HelloCounter;
++    // uint64_t m_MidCounter;
++    // uint64_t m_TcCounter;
++    // uint64_t m_HnaCounter;
++    uint64_t  m_controlPacketCounter;
++    uint128_t m_ControllPacketSize;
++
++    std::map<std::pair<Ipv4Address, Ipv4Address>, LinkMetricInfo> m_linkMetrics;
++    std::vector<double> m_linkLifetimes; 
++    std::vector<double> m_symLinkDurations;
++
+ };
+ 
+ } // namespace olsr

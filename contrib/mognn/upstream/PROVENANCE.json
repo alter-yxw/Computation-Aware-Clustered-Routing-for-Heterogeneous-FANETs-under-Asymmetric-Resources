@@ -1,0 +1,18 @@
+{
+  "repository": "https://github.com/zhongyuanzhao/multihop-offload",
+  "commit": "524bc4ef6af2a2a8c238b91470d10d2aeda14915",
+  "paper": "arXiv:2312.02471v2",
+  "paper_sha256": "5f7028fdd7a78c3670946d1ffd1f09dd70f14c4ddddbb250b761602be149337d",
+  "files_sha256": {
+    "LICENSE": "3c52dcbcfab1d7a8a90690528f43608aee0948c92f3d7878fbf38b7abb4c800e",
+    "data/aco_case_seed500_m2_n110_s18.mat": "055d8f4be90b88dd2a21834e205683ab2089a8be2b0f928de5d0c44d51102acf",
+    "data/aco_case_seed500_m2_n20_s4.mat": "46c4ecd44f796ad4ff419b2b75a333961b9d57632aeff0fb4f359b822c5a6e34",
+    "data/aco_case_seed500_m2_n50_s6.mat": "996734af1173a3484795cc33f4c88555971cb97244182f815e63f5d5c11b5196",
+    "gnn_offloading_agent.py": "c04741e25c2832f2b2905a5e80efbdc01bf8fe7c4e7abefa288cacc9a9996662",
+    "model_ChebConv_BAT800_a5_c5_ACO_agent/checkpoint": "fd8cedf447ada3326c854af6fcdf33c8e714bbae68ee9cbf79b235f5129d1c17",
+    "model_ChebConv_BAT800_a5_c5_ACO_agent/cp-0000.ckpt.data-00000-of-00001": "5f17759de8bd7c342383b0da157cde055dfbfe7f5e5d67a6e2a02fe9bba42df4",
+    "model_ChebConv_BAT800_a5_c5_ACO_agent/cp-0000.ckpt.index": "97e5b9767c44c10ac1295eef488d19296bd8d53ba67a3fd8676c517373046108",
+    "offloading_v3.py": "1cbf0e3a9367b1842d4a45193c76e9abc5858114f2eba33e01f7f52b85801487",
+    "util.py": "4599d3863a4234d4b1a69a2c9f3f88c1d24d4d91a0be0d4428bf5545d7984f84"
+  }
+}
