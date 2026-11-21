@@ -237,6 +237,11 @@ and restructured that prototype into a standard ns-3 module for the benchmark.
 The upstream repository does not declare a license, so the refactored module is
 withheld here pending clarification.
 
+The corresponding paper is: L. Zhao, M. B. Saif, A. Hawbani, G. Min, S. Peng,
+and N. Lin, "A novel improved artificial bee colony and blockchain-based
+secure clustering routing scheme for FANET," *China Communications*, vol. 18,
+no. 7, pp. 103-116, Jul. 2021, doi: 10.23919/JCC.2021.07.009.
+
 ## Verification status
 
 Checked on 2026-11-21 against a clean official ns-3.40 tree:
