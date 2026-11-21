@@ -41,6 +41,8 @@ scripts/
   cafbcr_asym_matrix_v5.sh   asymmetry matrix
 patches/ns-3.40/             four patches against the official ns-3.40 src/
 docs/ns3-changes.md          what each patch changes and why
+Result/                      fifth-batch per-run CSV results
+  README.md                  file index, row counts and schema
 apply_to_ns3.sh              copies this overlay onto a clean ns-3.40 tree
 ```
 
@@ -144,6 +146,19 @@ Each group writes one 46-column main CSV, a same-name `.audit.log` with the
 full native rows and commands, and a `.status.tsv`. Failed or interrupted runs
 are retained under `.csv.failures/`.
 
+## Published results
+
+`Result/` contains the per-run 46-column CSVs from the fifth benchmark batch
+(2026-11-14 to 2026-11-20): the scale, speed and asymmetry matrices, the three
+ICRA supplement files, and the server-selection/offloading ablations. See
+[Result/README.md](Result/README.md) for the file index, row counts and schema.
+
+The three main matrices are the **nine-object paper run** and therefore include
+`FBCR` and `iabc` rows even though their source code is not part of this
+release. The scripts in this repository reproduce the seven-object subset; the
+ICRA supplements are separate files intended to be joined by configuration
+identity.
+
 ## Scenario summary
 
 Unless overridden by a matrix:
@@ -223,15 +238,17 @@ and interface adaptation, not a numerical reproduction of the paper's figures.
 ## Scope of this release
 
 Included: CA-FBCR, FANET base classes, QRCF, ICRA, CFR-ENG, MO-GNN, the
-benchmark entry point, three matrices and the ns-3.40 patches.
+benchmark entry point, three matrices, the fifth-batch CSV results and the
+ns-3.40 patches.
 
 Not included:
 
 - FBCR (the authors' prior work);
 - IABC (see the note below);
 - KMeans, LEACH, PAGPSR and the old location-service module;
-- internal design documents, development hand-offs, manuscript sources and
-  collected result CSVs;
+- internal design documents, development hand-offs and manuscript sources;
+- per-run audit logs, status files and failure directories for the published
+  CSVs (only the 46-column main CSVs are included);
 - publisher PDFs of the cited ICRA and QRCF papers; the module documentation
   gives the bibliographic references only;
 - MOGNN validation artefacts (the 27 MB `validation/` directory).

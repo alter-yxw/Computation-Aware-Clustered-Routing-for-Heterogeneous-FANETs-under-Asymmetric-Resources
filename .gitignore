@@ -6,11 +6,14 @@ cmake-cache/
 *.a
 
 # Simulation outputs
-Result/
 *.csv
 *.audit.log
 *.status.tsv
 *.failures/
+*.lock
+
+# The published fifth-batch results are tracked explicitly
+!Result/*.csv
 
 # Editor/OS noise
 .vscode/
