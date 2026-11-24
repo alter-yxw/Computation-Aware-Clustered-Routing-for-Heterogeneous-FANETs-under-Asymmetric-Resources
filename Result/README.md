@@ -27,6 +27,17 @@ corresponding `.audit.log`, `.status.tsv`, failure directories and native
 The scale matrix is the complete 900-row version. An earlier 891-row file
 from the same batch was incomplete and is deliberately not included.
 
+### ICRA supplement
+
+ICRA was accidentally omitted from the main-batch run list. The three
+`*_icra.csv` files were therefore collected separately shortly afterwards
+(2026-11-16/17). The scenario parameters, seed, 20 `RngRun` repetitions,
+hardware/software environment and build configuration are unchanged, and no
+algorithm or protocol code was modified for the supplement. The files are kept
+separate from the main matrices so that the original main-batch rows remain
+untouched. When combining them, join by configuration identity (`Algorithm`,
+`Nodes`, `Speed(m/s)`, `AsymLevel`, `AsymRangeProfile`, `Seed`, `RngRun`).
+
 ## Protocol labels
 
 The three main matrices are the **nine-object paper run** and therefore
@@ -36,9 +47,9 @@ asymmetry matrix. FBCR and IABC source code is not part of this repository
 (see the top-level README), so the released scripts reproduce the
 seven-object subset only.
 
-The `*_icra.csv` files are a separate ICRA supplement; they contain `icra`
-rows only and are meant to be combined with the main matrix by configuration
-identity.
+The `*_icra.csv` files are the separate ICRA supplement described above; they
+contain `icra` rows only and are meant to be combined with the main matrix by
+configuration identity.
 
 ## Schema
 

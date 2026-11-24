@@ -155,9 +155,12 @@ ICRA supplement files, and the server-selection/offloading ablations. See
 
 The three main matrices are the **nine-object paper run** and therefore include
 `FBCR` and `iabc` rows even though their source code is not part of this
-release. The scripts in this repository reproduce the seven-object subset; the
-ICRA supplements are separate files intended to be joined by configuration
-identity.
+release. The scripts in this repository reproduce the seven-object subset.
+
+ICRA was accidentally omitted from the main-batch run list and was collected
+separately shortly afterwards; the scenario, environment and code were
+unchanged. The three ICRA files are kept separate and are intended to be joined
+by configuration identity.
 
 ## Scenario summary
 
